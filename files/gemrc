@@ -1,0 +1,4 @@
+---
+:sources:
+- http://ruby.taobao.org
+gem: --no-ri --no-rdoc

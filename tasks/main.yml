@@ -1,0 +1,55 @@
+---
+- name: install build depends
+  yum: name={{ item }} state=present
+  with_items:
+    - gcc
+    - openssl-devel
+    - libyaml-devel
+    - readline-devel
+    - zlib-devel
+    - libffi-devel
+    - git
+    - mysql-devel
+  sudo: true
+
+- name: install rbenv
+  git: repo=https://github.com/sstephenson/rbenv.git dest=~/.rbenv version=v0.4.0 accept_hostkey=true force=yes
+
+- name: add rbenv initialization to profile system-wide
+  copy: src=rbenv.sh dest=/etc/profile.d/rbenv.sh owner=root group=root mode=0755
+  sudo: true
+  when:
+    - ansible_os_family != 'OpenBSD'
+
+- name: add plugin directory
+  file: state=directory path=~/.rbenv/plugins
+
+- name: install plugins for selected users
+  git: >
+    repo=https://github.com/sstephenson/ruby-build.git
+    dest=~/.rbenv/plugins/ruby-build
+    accept_hostkey=true
+    force=yes
+
+- name: set default-gems for select users
+  copy: src=default-gems dest=~/.rbenv/default-gems
+
+- name: set gemrc for select users
+  copy: src=gemrc dest=~/.gemrc
+
+- name: check ruby {{ rbenv.ruby_version }} installed for select users
+  shell: $SHELL -lc "rbenv versions | grep {{ rbenv.ruby_version }}"
+  register: ruby_installed
+  changed_when: false
+  ignore_errors: yes
+  always_run: yes
+
+- name: install ruby {{ rbenv.ruby_version }} for select users
+  shell: $SHELL -lc "rbenv install {{ rbenv.ruby_version }}"
+  when: ruby_installed.stdout.find("{{ rbenv.ruby_version}}") == -1
+
+- name: set ruby {{ rbenv.ruby_version }} for select users
+  shell: $SHELL -lc "rbenv global {{ rbenv.ruby_version }} && rbenv rehash"
+
+- name: install Bundler
+  command: bash -lc "gem install bundler"
